@@ -1,0 +1,9 @@
+{
+  "name": "glacier-probes",
+  "private": true,
+  "type": "module",
+  "description": "Reproduction scripts for the findings in ../RIALO-FINDINGS.md",
+  "dependencies": {
+    "@rialo/ts-cdk": "0.18.1"
+  }
+}

@@ -1,0 +1,9 @@
+# Keep text files LF in the repository regardless of the platform they were
+# authored on, so a Windows checkout does not show every file as modified.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
