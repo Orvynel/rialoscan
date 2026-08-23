@@ -1,14 +1,14 @@
-# Glacier
+# RialoScan
 
-A block explorer for [Rialo](https://rialo.io), built directly on the node's
-JSON-RPC surface.
+**[rialoscan.org](https://rialoscan.org)** — a block explorer for
+[Rialo](https://rialo.io), built directly on the node's JSON-RPC surface.
 
 Rialo is a Layer 1 from Subzero Labs, currently on devnet and testnet. It shares
 Solana's account model but replaces the VM (PolkaVM instead of SBF) and adds two
 things to the execution model that no Solana-derived explorer has a view for:
 **REX**, which runs WASM components inside a TEE with real internet access, and
 **reactive transactions**, which are on-chain predicates that enqueue further
-transactions automatically. Glacier shows both.
+transactions automatically. RialoScan shows both.
 
 - Zero dependencies beyond Next.js and React.
 - No client-side data fetching, no wallet connection, no analytics, no tracking.
@@ -16,7 +16,7 @@ transactions automatically. Glacier shows both.
 
 ## Why not the official SDK
 
-Glacier does not use `@rialo/ts-cdk` for reads. Three defects were reproduced
+RialoScan does not use `@rialo/ts-cdk` for reads. Three defects were reproduced
 against live devnet, one of which is a silent correctness bug:
 
 - `sendTransaction` and `requestAirdrop` are typed `Promise<Signature>` but
@@ -28,13 +28,13 @@ against live devnet, one of which is a silent correctness bug:
   anything above 2^53 is silently corrupted. `u64::MAX` comes back as 2^64. This
   affects balances above ~9,007,199 RLO.
 
-Glacier reads u64 fields out of the raw JSON *text* into `BigInt` before any
+RialoScan reads u64 fields out of the raw JSON *text* into `BigInt` before any
 number conversion happens (`lib/json.ts`), so no on-chain integer passes through
 a double. Full write-up with repro scripts: [`RIALO-FINDINGS.md`](RIALO-FINDINGS.md).
 
 ## What the node will and will not give you
 
-These are limits of the chain's RPC, not of this explorer. Glacier states them
+These are limits of the chain's RPC, not of this explorer. RialoScan states them
 in the interface rather than papering over them, because an explorer that
 silently shows less than the truth is worse than one that explains the gap:
 
@@ -43,7 +43,7 @@ silently shows less than the truth is worse than one that explains the gap:
   control — a working `before` returns zero overlap; it returned 16 of 20).
   Older history is unreachable over RPC.
 - **The transaction feed is a fixed window of 100.** `getTransactions` accepts
-  `signatures`, `limit` and `before` and ignores all three. Glacier therefore
+  `signatures`, `limit` and `before` and ignores all three. RialoScan therefore
   offers no transaction pagination — paging controls would imply history that
   cannot be fetched.
 - **No JSON-RPC batching.** A batch array is rejected with `-32602`. N pieces of

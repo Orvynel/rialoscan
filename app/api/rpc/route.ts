@@ -90,7 +90,7 @@ export function OPTIONS() {
 export function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
   return json({
-    service: "glacier-rpc-proxy",
+    service: "rialoscan-rpc-proxy",
     description:
       "CORS-enabled read-only JSON-RPC proxy for Rialo. Adds batching and u64-safe serialisation, which the upstream node does not provide.",
     endpoint: `${origin}/api/rpc`,

@@ -184,7 +184,7 @@ export function RexRequestList({
                 </div>
                 <div className="dim" style={{ fontSize: 11, marginTop: 7 }}>
                   Assigned validators are hex-encoded authority keys — the same keys{" "}
-                  <code>getClusterNodes</code> returns in base64. Glacier decodes both to bytes so a duty can
+                  <code>getClusterNodes</code> returns in base64. RialoScan decodes both to bytes so a duty can
                   be attributed to a named validator.
                 </div>
               </div>

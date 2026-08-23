@@ -6,7 +6,7 @@ import { DEFAULT_NETWORK, NETWORK_IDS, NETWORKS, resolveNetwork } from "@/lib/ne
 
 /**
  * Network lives in the URL rather than a cookie so that every link a user
- * copies out of Glacier resolves to the same chain for whoever opens it.
+ * copies out of RialoScan resolves to the same chain for whoever opens it.
  */
 export function NetworkSwitcher() {
   const pathname = usePathname();

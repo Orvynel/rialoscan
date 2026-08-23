@@ -254,7 +254,7 @@ export default async function ValidatorsPage({ searchParams }: { searchParams: P
           round each node committed. <code>getValidatorAccounts</code> describes on-chain registration —
           stake, commission, unbonding, and the addresses the validator itself published. The two disagree
           on encoding (base64 vs base58 for identical keys) and on port
-          {unbonding !== null ? `, and the unbonding period is ${formatDuration(unbonding)}` : ""}. Glacier
+          {unbonding !== null ? `, and the unbonding period is ${formatDuration(unbonding)}` : ""}. RialoScan
           joins them on hostname, which is the only field that is stable across both.
         </Notice>
       </div>

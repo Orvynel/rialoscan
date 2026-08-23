@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { DEFAULT_NETWORK, resolveNetwork } from "@/lib/networks";
-import { GlacierMark } from "./Icons";
+import { Mark } from "./Icons";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { SearchBar } from "./SearchBar";
 
@@ -24,11 +24,11 @@ export function Header() {
   return (
     <header className="header">
       <div className="shell header-inner">
-        <Link href={`/${suffix}`} className="wordmark" aria-label="Glacier home">
+        <Link href={`/${suffix}`} className="wordmark" aria-label="RialoScan home">
           <span style={{ color: "var(--accent)" }}>
-            <GlacierMark />
+            <Mark />
           </span>
-          <span className="wordmark-text">Glacier</span>
+          <span className="wordmark-text">RialoScan</span>
         </Link>
 
         <nav className="nav" aria-label="Sections">

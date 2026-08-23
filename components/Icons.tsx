@@ -1,6 +1,6 @@
-export function GlacierMark({ size = 15 }: { size?: number }) {
-  // Three stacked strata under a peak: a glacier in cross-section, which is
-  // also what a block explorer shows — layers of history, oldest at the base.
+export function Mark({ size = 15 }: { size?: number }) {
+  // Three stacked strata narrowing to a point: layers of history with the oldest
+  // at the base, which is what an explorer reads. Deliberately name-neutral.
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M8 1.4 1.2 13.4h13.6L8 1.4Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />

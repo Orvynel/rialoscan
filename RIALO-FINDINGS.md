@@ -164,7 +164,7 @@ getTransaction { signature } -> returns an object, error: null
 ```
 
 So the method itself is sound and the fault is entirely in the client's
-parameter encoding. This is why Glacier talks to the RPC directly rather than
+parameter encoding. This is why RialoScan talks to the RPC directly rather than
 through `@rialo/ts-cdk` — see §7.
 
 ### Bug 3 — u64 precision loss (correctness bug)
@@ -263,7 +263,7 @@ created_at: "+58538-12-18 05:00:48.000 UTC"
 Year 58538. The value is milliseconds rendered through a seconds formatter.
 The defect is **scoped to this one field** — `duties[].target_timestamp` on the
 same object formats correctly as `2026-08-23 04:22:27.700 UTC`, which is how we
-know it is a formatting bug and not a bad stored value. Glacier shows
+know it is a formatting bug and not a bad stored value. RialoScan shows
 `created_at` verbatim rather than deriving a date from it.
 
 ## 8. The same key in three encodings across three endpoints
@@ -281,12 +281,12 @@ method you ask:
 
 These are the *same bytes*. A client that joins `getValidatorAccounts` against
 `getClusterNodes` on key equality matches zero rows. The only correct approach
-is to decode all three to bytes and compare. Glacier does this in
+is to decode all three to bytes and compare. RialoScan does this in
 `lib/base58.ts` (`sameKey`, `hexEqualsBase64`) — which is what turns
 192 characters of hex on a REX duty into the label `validator-0`.
 
 The two endpoints also disagree on ordering (`getClusterNodes[0]` is `node0`,
-`getValidatorAccounts[0]` is `node2`), so Glacier joins them on hostname.
+`getValidatorAccounts[0]` is `node2`), so RialoScan joins them on hostname.
 
 ### 8.1 — `address` and `subdag_sync_address` are base64-wrapped binary multiaddrs
 
@@ -315,7 +315,7 @@ multiaddrs are decoded, at which point it is simply three services. Decoder:
 - `getValidatorAccounts[].stake` is `1` per validator on devnet. This is stake
   *units*, not kelvin — treating it as kelvin would report 1 billionth of an
   RLO staked.
-- `commission_rate` is the integer `0` with no stated denominator. Glacier shows
+- `commission_rate` is the integer `0` with no stated denominator. RialoScan shows
   it unscaled rather than guessing it is a percentage or a basis-point value.
 
 ## 9. Reproducing
@@ -351,7 +351,7 @@ This repository — a block explorer for Rialo devnet and testnet, built directl
 the JSON-RPC surface documented above. Every limitation in §7 and §8 is either
 handled or stated in the UI rather than hidden:
 
-| Finding | How Glacier handles it |
+| Finding | How RialoScan handles it |
 |---|---|
 | §6 Bugs 1–3 (SDK) | Does not use `@rialo/ts-cdk` for reads. Talks to the RPC directly and parses u64 fields from raw JSON text into `BigInt`, so no value passes through a double. |
 | §7.1 no tx filters | `/txs` has no pagination controls, and says why. |
@@ -372,6 +372,6 @@ Solana-derived explorer has a view for:
   `getWorkflowLineage` causal tree.
 
 The RPC is not CORS-enabled (no `access-control-allow-origin` header), so a
-server-side proxy is mandatory for any browser client. Glacier's data layer is
+server-side proxy is mandatory for any browser client. RialoScan's data layer is
 `server-only` for this reason.
 

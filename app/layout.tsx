@@ -10,15 +10,24 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "sw
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Glacier — Rialo block explorer", template: "%s · Glacier" },
+  // Absolute base for OpenGraph and canonical URLs. Without this, Next.js emits
+  // relative og:url values, which most link-preview crawlers refuse to resolve.
+  metadataBase: new URL("https://rialoscan.org"),
+  title: { default: "RialoScan — Rialo block explorer", template: "%s · RialoScan" },
   description:
     "An independent block explorer for the Rialo network. Blocks, transactions, accounts, validators, and reactive-execution workflows on devnet and testnet.",
-  applicationName: "Glacier",
+  applicationName: "RialoScan",
   openGraph: {
-    title: "Glacier — Rialo block explorer",
+    title: "RialoScan — Rialo block explorer",
     description: "Blocks, transactions, accounts, validators and REX workflows on Rialo devnet and testnet.",
-    siteName: "Glacier",
+    siteName: "RialoScan",
+    url: "/",
     type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "RialoScan — Rialo block explorer",
+    description: "Blocks, transactions, accounts, validators and REX workflows on Rialo devnet and testnet.",
   },
   robots: { index: true, follow: true },
 };
@@ -37,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="footer">
           <div className="shell footer-inner">
             <span>
-              Glacier · independent explorer · not affiliated with Subzero Labs
+              RialoScan · independent explorer · not affiliated with Subzero Labs
             </span>
             <span className="footer-links">
               <a href="/api/rpc">CORS-safe RPC proxy</a>
