@@ -11,14 +11,15 @@ import {
   getValidatorAccounts,
   getValidatorHealth,
 } from "@/lib/chain";
-import { NETWORKS, resolveNetwork } from "@/lib/networks";
+import { requireNetwork } from "@/lib/host";
+import { NETWORKS } from "@/lib/networks";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Validators" };
 
-export default async function ValidatorsPage({ searchParams }: { searchParams: Promise<{ net?: string }> }) {
-  const net = resolveNetwork((await searchParams).net);
+export default async function ValidatorsPage() {
+  const net = await requireNetwork();
 
   const [cluster, accounts, connected, fullNodes, health] = await Promise.all([
     getCluster(net).catch(() => ({ version: 0n, nodes: [] })),
@@ -113,7 +114,7 @@ export default async function ValidatorsPage({ searchParams }: { searchParams: P
                     </span>
                     <span className="row-secondary" style={{ minWidth: 0, whiteSpace: "normal" }}>
                       {account ? (
-                        <Hash value={account.pubkey} net={net} kind="address" head={8} tail={8} />
+                        <Hash value={account.pubkey} kind="address" head={8} tail={8} />
                       ) : (
                         <span className="dim">no on-chain account</span>
                       )}
@@ -172,7 +173,7 @@ export default async function ValidatorsPage({ searchParams }: { searchParams: P
                   <dl className="dl">
                     <dt>Validator account</dt>
                     <dd>
-                      <Hash value={account.pubkey} net={net} kind="address" full copy />
+                      <Hash value={account.pubkey} kind="address" full copy />
                     </dd>
 
                     <dt>Registered address</dt>

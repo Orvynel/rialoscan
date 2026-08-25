@@ -1,7 +1,6 @@
 import { formatDuration, formatUtcWithMillis, groupDigits, plural, shorten } from "@/lib/format";
 import { Hash } from "./Hash";
 import type { RexRequest } from "@/lib/chain";
-import type { NetworkId } from "@/lib/networks";
 
 /**
  * REX requests for one creator.
@@ -24,12 +23,10 @@ import type { NetworkId } from "@/lib/networks";
  */
 export function RexRequestList({
   requests,
-  net,
   missedDuties,
   validatorNames,
 }: {
   requests: RexRequest[];
-  net: NetworkId;
   missedDuties?: Map<string, number[]>;
   /** Hex authority key -> hostname, so duty assignments read as validator names. */
   validatorNames?: Map<string, string>;
@@ -82,7 +79,7 @@ export function RexRequestList({
             <dl className="dl">
               <dt>Creator</dt>
               <dd>
-                <Hash value={request.creator} net={net} kind="address" full />
+                <Hash value={request.creator} kind="address" full />
               </dd>
 
               <dt>Nonce</dt>

@@ -2,7 +2,6 @@ import { Hash } from "./Hash";
 import { formatUtc, groupDigits, plural } from "@/lib/format";
 import type { WorkflowNode } from "@/lib/chain";
 import type { ProgramInfo } from "@/lib/programs";
-import type { NetworkId } from "@/lib/networks";
 
 /**
  * The causal tree of a reactive transaction.
@@ -18,19 +17,17 @@ import type { NetworkId } from "@/lib/networks";
  */
 export function WorkflowTree({
   root,
-  net,
   currentId,
   programs,
 }: {
   root: WorkflowNode;
-  net: NetworkId;
   currentId?: string;
   programs: Map<string, ProgramInfo>;
 }) {
   return (
     <div className="tree">
       <ul className="tree-list">
-        <TreeItem node={root} net={net} currentId={currentId} programs={programs} />
+        <TreeItem node={root} currentId={currentId} programs={programs} />
       </ul>
     </div>
   );
@@ -38,12 +35,10 @@ export function WorkflowTree({
 
 function TreeItem({
   node,
-  net,
   currentId,
   programs,
 }: {
   node: WorkflowNode;
-  net: NetworkId;
   currentId?: string;
   programs: Map<string, ProgramInfo>;
 }) {
@@ -53,7 +48,7 @@ function TreeItem({
     <li className="tree-item">
       <div className="tree-node" data-current={isCurrent} data-failed={!node.success}>
         <span className="tree-depth">d{node.depth}</span>
-        <Hash value={node.id} net={net} kind="tx" head={10} tail={8} />
+        <Hash value={node.id} kind="tx" head={10} tail={8} />
         {isCurrent ? <span className="tag" data-tone="accent">this tx</span> : null}
         {!node.success ? <span className="tag" data-tone="warn">failed</span> : null}
         {node.blockHeight !== null ? (
@@ -80,7 +75,7 @@ function TreeItem({
       {node.children.length > 0 ? (
         <ul className="tree-list">
           {node.children.map((child) => (
-            <TreeItem key={child.id} node={child} net={net} currentId={currentId} programs={programs} />
+            <TreeItem key={child.id} node={child} currentId={currentId} programs={programs} />
           ))}
         </ul>
       ) : null}

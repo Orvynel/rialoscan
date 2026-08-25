@@ -14,7 +14,8 @@ import {
   nativeProgramName,
 } from "@/lib/chain";
 import { CACHE_IMMUTABLE } from "@/lib/rpc";
-import { DEFAULT_NETWORK, NETWORKS, resolveNetwork, withNetwork } from "@/lib/networks";
+import { requireNetwork } from "@/lib/host";
+import { NETWORKS } from "@/lib/networks";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +34,10 @@ const SAMPLE_CREATOR = "EP5YsLqRnuztVapKz9QX8cPJ7DrLzcaGVn9dHupYoR3S";
 export default async function RexPage({
   searchParams,
 }: {
-  searchParams: Promise<{ net?: string; creator?: string }>;
+  searchParams: Promise<{ creator?: string }>;
 }) {
   const params = await searchParams;
-  const net = resolveNetwork(params.net);
+  const net = await requireNetwork();
   const requested = (params.creator ?? "").trim();
   const creator = looksLikeAddress(requested) ? requested : SAMPLE_CREATOR;
   const invalidInput = requested.length > 0 && !looksLikeAddress(requested);
@@ -134,7 +135,7 @@ export default async function RexPage({
             <dl className="dl">
               <dt>REX processor</dt>
               <dd>
-                <Hash value={REX_PROCESSOR} net={net} kind="address" full copy />
+                <Hash value={REX_PROCESSOR} kind="address" full copy />
                 <div className="dim" style={{ fontSize: 11 }}>
                   {processor === null ? (
                     "Not present on this network."
@@ -166,7 +167,7 @@ export default async function RexPage({
               <dt>Validators</dt>
               <dd>
                 {cluster.nodes.length} in the set ·{" "}
-                <Link className="hash" href={withNetwork("/validators", net)}>
+                <Link className="hash" href="/validators">
                   view validators →
                 </Link>
               </dd>
@@ -177,7 +178,6 @@ export default async function RexPage({
         <Panel title="Look up a creator">
           <div className="panel-body">
             <form className="field" method="get">
-              {net !== DEFAULT_NETWORK ? <input type="hidden" name="net" value={net} /> : null}
               <input
                 className="field-input"
                 type="text"
@@ -199,7 +199,7 @@ export default async function RexPage({
               </div>
             ) : null}
             <div className="dim" style={{ marginTop: 10, fontSize: 11 }}>
-              Showing <Hash value={creator} net={net} kind="address" full />
+              Showing <Hash value={creator} kind="address" full />
               {requested === "" ? " — a creator with live activity on devnet, shown so this page is never empty." : ""}
             </div>
           </div>
@@ -216,7 +216,6 @@ export default async function RexPage({
           ) : (
             <RexRequestList
               requests={requests}
-              net={net}
               missedDuties={missedDuties}
               validatorNames={validatorNames}
             />

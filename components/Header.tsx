@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { DEFAULT_NETWORK, resolveNetwork } from "@/lib/networks";
+import { usePathname } from "next/navigation";
+import type { NetworkId } from "@/lib/networks";
 import { Mark } from "./Icons";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { SearchBar } from "./SearchBar";
@@ -15,36 +15,56 @@ const NAV = [
   { href: "/rex", label: "REX" },
 ];
 
-export function Header() {
+/**
+ * `net` is null on the bare domain, which serves no chain — there is nothing to
+ * search and nowhere to navigate, so the header is reduced to the wordmark.
+ *
+ * Navigation hrefs carry no network because the hostname already does, which is
+ * also why this component no longer reads the query string and the layout no
+ * longer has to suspend it during prerender.
+ */
+export function Header({
+  net,
+  host,
+  protocol,
+}: {
+  net: NetworkId | null;
+  host: string;
+  protocol: string;
+}) {
   const pathname = usePathname();
-  const params = useSearchParams();
-  const net = resolveNetwork(params.get("net"));
-  const suffix = net === DEFAULT_NETWORK ? "" : `?net=${net}`;
 
   return (
     <header className="header">
       <div className="shell header-inner">
-        <Link href={`/${suffix}`} className="wordmark" aria-label="RialoScan home">
+        <Link href="/" className="wordmark" aria-label="RialoScan home">
           <span style={{ color: "var(--accent)" }}>
             <Mark />
           </span>
           <span className="wordmark-text">RialoScan</span>
         </Link>
 
-        <nav className="nav" aria-label="Sections">
-          {NAV.map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-            return (
-              <Link key={item.href} href={`${item.href}${suffix}`} className="nav-link" data-active={active}>
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {net === null ? null : (
+          <nav className="nav" aria-label="Sections">
+            {NAV.map((item) => {
+              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              return (
+                <Link key={item.href} href={item.href} className="nav-link" data-active={active}>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
         <span className="header-spacer" />
-        <SearchBar />
-        <NetworkSwitcher />
+
+        {net === null ? null : (
+          <>
+            <SearchBar />
+            <NetworkSwitcher net={net} host={host} protocol={protocol} />
+          </>
+        )}
       </div>
     </header>
   );

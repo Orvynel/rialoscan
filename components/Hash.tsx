@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { shorten } from "@/lib/format";
-import { withNetwork } from "@/lib/networks";
-import type { NetworkId } from "@/lib/networks";
 import { CopyButton } from "./CopyButton";
 
 type HashProps = {
   value: string;
-  net: NetworkId;
   kind?: "address" | "tx" | "block";
   head?: number;
   tail?: number;
@@ -17,23 +14,28 @@ type HashProps = {
   label?: string;
 };
 
-function href(kind: HashProps["kind"], value: string, net: NetworkId): string | null {
+/**
+ * Paths carry no network. Each network is served from its own host, so a
+ * relative link stays on the chain the visitor is already looking at, and a
+ * copied absolute URL names its chain in the hostname.
+ */
+function href(kind: HashProps["kind"], value: string): string | null {
   switch (kind) {
     case "address":
-      return withNetwork(`/address/${value}`, net);
+      return `/address/${value}`;
     case "tx":
-      return withNetwork(`/tx/${value}`, net);
+      return `/tx/${value}`;
     case "block":
-      return withNetwork(`/block/${value}`, net);
+      return `/block/${value}`;
     default:
       return null;
   }
 }
 
 /** Base58 identifier: linked, middle-ellipsised, with the full value on hover. */
-export function Hash({ value, net, kind, head = 6, tail = 6, full = false, copy = false, label }: HashProps) {
+export function Hash({ value, kind, head = 6, tail = 6, full = false, copy = false, label }: HashProps) {
   const text = label ?? (full ? value : shorten(value, head, tail));
-  const target = href(kind, value, net);
+  const target = href(kind, value);
 
   const body = target ? (
     <Link href={target} className="hash" title={value}>

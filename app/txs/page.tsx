@@ -5,14 +5,15 @@ import { Empty, Notice, Panel, Stat } from "@/components/Panel";
 import { formatRate, formatUtc, groupDigits, plural, timeAgo } from "@/lib/format";
 import { getRecentTransactions, getTransactionCount } from "@/lib/chain";
 import { fetchedAt } from "@/lib/rpc";
-import { NETWORKS, resolveNetwork } from "@/lib/networks";
+import { requireNetwork } from "@/lib/host";
+import { NETWORKS } from "@/lib/networks";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Transactions" };
 
-export default async function TransactionsPage({ searchParams }: { searchParams: Promise<{ net?: string }> }) {
-  const net = resolveNetwork((await searchParams).net);
+export default async function TransactionsPage() {
+  const net = await requireNetwork();
 
   const [recent, total] = await Promise.all([
     getRecentTransactions(net).catch(() => []),
@@ -70,13 +71,13 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               {recent.map((tx) => (
                 <div key={tx.signature} className="row row-sig">
                   <span className="row-primary" style={{ overflow: "hidden" }}>
-                    <Hash value={tx.signature} net={net} kind="tx" head={16} tail={12} />
+                    <Hash value={tx.signature} kind="tx" head={16} tail={12} />
                   </span>
                   <span className="row-secondary">
                     {tx.blockHeight === null ? (
                       "—"
                     ) : (
-                      <Hash value={tx.blockHeight.toString()} net={net} kind="block" full />
+                      <Hash value={tx.blockHeight.toString()} kind="block" full />
                     )}
                   </span>
                   <span className="row-time" title={formatUtc(tx.blockTimeMs)}>

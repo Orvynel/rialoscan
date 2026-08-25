@@ -22,11 +22,11 @@ import {
   getSignaturesForAddress,
   nativeProgramName,
 } from "@/lib/chain";
-import { NETWORKS, resolveNetwork } from "@/lib/networks";
+import { requireNetwork } from "@/lib/host";
+import { NETWORKS } from "@/lib/networks";
 
 type Props = {
   params: Promise<{ address: string }>;
-  searchParams: Promise<{ net?: string }>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -45,9 +45,9 @@ function asPrintableText(base64: string): string | null {
   }
 }
 
-export default async function AddressPage({ params, searchParams }: Props) {
+export default async function AddressPage({ params }: Props) {
   const { address: rawAddress } = await params;
-  const net = resolveNetwork((await searchParams).net);
+  const net = await requireNetwork();
   const address = decodeURIComponent(rawAddress);
 
   if (!looksLikeAddress(address)) notFound();
@@ -113,7 +113,7 @@ export default async function AddressPage({ params, searchParams }: Props) {
                 account.owner === NATIVE_LOADER ? (
                   "Native loader"
                 ) : (
-                  <Hash value={account.owner} net={net} kind="address" head={6} tail={6} />
+                  <Hash value={account.owner} kind="address" head={6} tail={6} />
                 )
               }
             />
@@ -153,7 +153,7 @@ export default async function AddressPage({ params, searchParams }: Props) {
 
                   <dt>Owner</dt>
                   <dd>
-                    <Hash value={account.owner} net={net} kind="address" full />
+                    <Hash value={account.owner} kind="address" full />
                     {account.owner === NATIVE_LOADER ? (
                       <div className="dim" style={{ fontSize: 11 }}>
                         Owned by the native loader — this program is built into the runtime, not deployed.
@@ -205,7 +205,7 @@ export default async function AddressPage({ params, searchParams }: Props) {
 
             {rexRequests.length > 0 ? (
               <Panel title={`REX requests created (${rexRequests.length})`}>
-                <RexRequestList requests={rexRequests} net={net} />
+                <RexRequestList requests={rexRequests} />
               </Panel>
             ) : null}
 
@@ -222,13 +222,13 @@ export default async function AddressPage({ params, searchParams }: Props) {
                   {signatures.map((entry) => (
                     <div key={entry.signature} className="row row-sig">
                       <span className="row-primary" style={{ overflow: "hidden" }}>
-                        <Hash value={entry.signature} net={net} kind="tx" head={14} tail={12} />
+                        <Hash value={entry.signature} kind="tx" head={14} tail={12} />
                       </span>
                       <span className="row-secondary">
                         {entry.blockHeight === null ? (
                           "—"
                         ) : (
-                          <Hash value={entry.blockHeight.toString()} net={net} kind="block" full />
+                          <Hash value={entry.blockHeight.toString()} kind="block" full />
                         )}
                       </span>
                       <span className="row-time" title={formatUtc(entry.blockTimeMs)}>

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { stringifyLossless } from "@/lib/json";
-import { DEFAULT_NETWORK, NETWORK_IDS, resolveNetwork } from "@/lib/networks";
+import { hostNetwork, isNetworkId, NETWORK_IDS, type NetworkId } from "@/lib/networks";
 import { rpc, RpcError, RpcTransportError } from "@/lib/rpc";
 
 /**
@@ -21,6 +21,12 @@ import { rpc, RpcError, RpcTransportError } from "@/lib/rpc";
  *    `requestAirdrop` or `submitEpochChange` would turn this into an open relay
  *    and a free faucet tap; point those at the node directly from a server you
  *    control.
+ *
+ * Which network is served follows the hostname it was called on, so
+ * `devnet.rialoscan.org/api/rpc` reaches devnet with no parameters at all. An
+ * explicit `?net=` overrides that — useful for querying the other chain from a
+ * page, or for calling the proxy on the bare domain, which serves no chain and
+ * therefore requires it.
  */
 
 const READ_METHODS = new Set([
@@ -87,18 +93,39 @@ export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
+/**
+ * The origin the caller actually used. `nextUrl.origin` reports the address the
+ * server is bound to, which behind a proxy is not the hostname in the request —
+ * and hostname is what selects the network here, so the examples below have to
+ * echo it back verbatim or they document the wrong endpoint.
+ */
+function callerOrigin(request: NextRequest): string {
+  const host = request.headers.get("host") ?? request.headers.get("x-forwarded-host");
+  if (!host) return request.nextUrl.origin;
+  const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const name = host.split(":")[0].toLowerCase();
+  const loopback = name === "localhost" || name.endsWith(".localhost") || name.startsWith("127.");
+  return `${proto ?? (loopback ? "http" : "https")}://${host}`;
+}
+
 export function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin;
+  const origin = callerOrigin(request);
+  const net = hostNetwork(request.headers.get("host"));
   return json({
     service: "rialoscan-rpc-proxy",
     description:
       "CORS-enabled read-only JSON-RPC proxy for Rialo. Adds batching and u64-safe serialisation, which the upstream node does not provide.",
     endpoint: `${origin}/api/rpc`,
     networks: NETWORK_IDS,
-    defaultNetwork: DEFAULT_NETWORK,
+    network: net,
+    networkResolution:
+      net === null
+        ? "This host serves no network, so `?net=` is required."
+        : `Defaults to '${net}' from the hostname; override per-request with ?net=`,
     usage: {
-      single: `POST ${origin}/api/rpc?net=devnet  {"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}`,
-      batch: `POST ${origin}/api/rpc?net=devnet  [{...},{...}]  (max ${MAX_BATCH}, fanned out concurrently)`,
+      single: `POST ${origin}/api/rpc  {"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}`,
+      batch: `POST ${origin}/api/rpc  [{...},{...}]  (max ${MAX_BATCH}, fanned out concurrently)`,
+      otherNetwork: `POST ${origin}/api/rpc?net=${NETWORK_IDS.filter((id) => id !== net)[0]}`,
     },
     notes: [
       "Integers above 2^53-1 are returned as decimal strings to preserve u64 precision.",
@@ -110,7 +137,7 @@ export function GET(request: NextRequest) {
 
 type Payload = { jsonrpc?: string; id?: unknown; method?: unknown; params?: unknown };
 
-async function handleOne(net: ReturnType<typeof resolveNetwork>, payload: Payload) {
+async function handleOne(net: NetworkId, payload: Payload) {
   const { id = null, method, params } = payload;
 
   if (typeof method !== "string") {
@@ -141,7 +168,29 @@ async function handleOne(net: ReturnType<typeof resolveNetwork>, payload: Payloa
 }
 
 export async function POST(request: NextRequest) {
-  const net = resolveNetwork(request.nextUrl.searchParams.get("net"));
+  // Explicit beats implicit: `?net=` wins over the hostname so a page on one
+  // chain can still query the other. A present-but-unknown value is an error
+  // rather than a silent fall back to whatever the host happens to serve.
+  const requested = request.nextUrl.searchParams.get("net");
+  let net: NetworkId;
+  if (requested !== null) {
+    if (!isNetworkId(requested)) {
+      return json(
+        rpcError(null, -32602, `Unknown network '${requested}'. Known networks: ${NETWORK_IDS.join(", ")}`),
+        400,
+      );
+    }
+    net = requested;
+  } else {
+    const fromHost = hostNetwork(request.headers.get("host"));
+    if (fromHost === null) {
+      return json(
+        rpcError(null, -32602, `This host serves no network: pass ?net= (${NETWORK_IDS.join(" | ")})`),
+        400,
+      );
+    }
+    net = fromHost;
+  }
 
   let body: unknown;
   try {

@@ -19,11 +19,11 @@ import {
 import { getBlock, getTransaction, getWorkflowLineage } from "@/lib/chain";
 import { accountRoles, roleLabel } from "@/lib/message";
 import { resolvePrograms, type ProgramInfo } from "@/lib/programs";
-import { NETWORKS, resolveNetwork, withNetwork } from "@/lib/networks";
+import { requireNetwork } from "@/lib/host";
+import { NETWORKS } from "@/lib/networks";
 
 type Props = {
   params: Promise<{ signature: string }>;
-  searchParams: Promise<{ net?: string }>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -31,9 +31,9 @@ export async function generateMetadata({ params }: Props) {
   return { title: `Transaction ${signature.slice(0, 12)}…` };
 }
 
-export default async function TransactionPage({ params, searchParams }: Props) {
+export default async function TransactionPage({ params }: Props) {
   const { signature: raw } = await params;
-  const net = resolveNetwork((await searchParams).net);
+  const net = await requireNetwork();
   const signature = decodeURIComponent(raw);
 
   if (!looksLikeSignature(signature)) notFound();
@@ -90,7 +90,7 @@ export default async function TransactionPage({ params, searchParams }: Props) {
             tx.blockHeight === null ? (
               "—"
             ) : (
-              <Hash value={tx.blockHeight.toString()} net={net} kind="block" full />
+              <Hash value={tx.blockHeight.toString()} kind="block" full />
             )
           }
           note={tx.blockHeight === null ? "not reported" : undefined}
@@ -145,7 +145,7 @@ export default async function TransactionPage({ params, searchParams }: Props) {
 
               <dt>Fee payer</dt>
               <dd>
-                {roles[0] ? <Hash value={roles[0].address} net={net} kind="address" full copy /> : "—"}
+                {roles[0] ? <Hash value={roles[0].address} kind="address" full copy /> : "—"}
               </dd>
 
               <dt>Signers required</dt>
@@ -185,7 +185,6 @@ export default async function TransactionPage({ params, searchParams }: Props) {
                     <span className="row-primary" style={{ overflow: "hidden" }}>
                       <Hash
                         value={role.address}
-                        net={net}
                         kind="address"
                         head={14}
                         tail={12}
@@ -224,7 +223,7 @@ export default async function TransactionPage({ params, searchParams }: Props) {
                       <Link
                         className="tag"
                         data-tone="accent"
-                        href={withNetwork(`/address/${programAddress}`, net)}
+                        href={`/address/${programAddress}`}
                         title={programAddress}
                       >
                         {program?.label ?? `${programAddress.slice(0, 10)}…`}
@@ -244,7 +243,7 @@ export default async function TransactionPage({ params, searchParams }: Props) {
                           <span key={position} className="tag" title={role ? roleLabel(role) : undefined}>
                             #{accountIndex}{" "}
                             {role ? (
-                              <Hash value={role.address} net={net} kind="address" head={4} tail={4} />
+                              <Hash value={role.address} kind="address" head={4} tail={4} />
                             ) : (
                               "unknown"
                             )}
@@ -272,7 +271,6 @@ export default async function TransactionPage({ params, searchParams }: Props) {
             <>
               <WorkflowTree
                 root={lineage.root}
-                net={net}
                 currentId={signature}
                 programs={lineagePrograms}
               />

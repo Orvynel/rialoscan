@@ -7,12 +7,12 @@ import { DataBlob } from "@/components/DataBlob";
 import { formatCompact, formatRlo, formatUtc, groupDigits, plural, timeAgo } from "@/lib/format";
 import { getBlock, getBlockHeight } from "@/lib/chain";
 import { resolvePrograms } from "@/lib/programs";
-import { resolveNetwork, withNetwork, NETWORKS } from "@/lib/networks";
+import { requireNetwork } from "@/lib/host";
+import { NETWORKS } from "@/lib/networks";
 import type { BlockTransaction } from "@/lib/chain";
 
 type Props = {
   params: Promise<{ height: string }>;
-  searchParams: Promise<{ net?: string }>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -25,9 +25,9 @@ function programOf(tx: BlockTransaction, programIdIndex: number): string {
   return tx.transaction.message.accountKeys[programIdIndex] ?? "";
 }
 
-export default async function BlockPage({ params, searchParams }: Props) {
+export default async function BlockPage({ params }: Props) {
   const { height: heightParam } = await params;
-  const net = resolveNetwork((await searchParams).net);
+  const net = await requireNetwork();
 
   if (!/^\d+$/.test(heightParam)) notFound();
   const height = BigInt(heightParam);
@@ -67,7 +67,7 @@ export default async function BlockPage({ params, searchParams }: Props) {
         </div>
         <div className="pager">
           {hasPrev ? (
-            <Link className="pager-link" href={withNetwork(`/block/${height - 1n}`, net)}>
+            <Link className="pager-link" href={`/block/${height - 1n}`}>
               ← {groupDigits(height - 1n)}
             </Link>
           ) : (
@@ -76,7 +76,7 @@ export default async function BlockPage({ params, searchParams }: Props) {
             </span>
           )}
           {hasNext ? (
-            <Link className="pager-link" href={withNetwork(`/block/${height + 1n}`, net)}>
+            <Link className="pager-link" href={`/block/${height + 1n}`}>
               {groupDigits(height + 1n)} →
             </Link>
           ) : (
@@ -133,7 +133,7 @@ export default async function BlockPage({ params, searchParams }: Props) {
                   <div key={signature || index} className="row row-ix">
                     <span className="row-primary" style={{ overflow: "hidden" }}>
                       {signature ? (
-                        <Hash value={signature} net={net} kind="tx" head={12} tail={10} />
+                        <Hash value={signature} kind="tx" head={12} tail={10} />
                       ) : (
                         <span className="dim">unsigned</span>
                       )}
@@ -144,7 +144,7 @@ export default async function BlockPage({ params, searchParams }: Props) {
                           key={address}
                           className="tag"
                           data-tone="accent"
-                          href={withNetwork(`/address/${address}`, net)}
+                          href={`/address/${address}`}
                           title={address}
                         >
                           {programs.get(address)?.label ?? `${address.slice(0, 8)}…`}

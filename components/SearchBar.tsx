@@ -1,9 +1,8 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { looksLikeAddress, looksLikeBlockHeight, looksLikeSignature } from "@/lib/format";
-import { DEFAULT_NETWORK, resolveNetwork, withNetwork } from "@/lib/networks";
 import { SearchIcon } from "./Icons";
 
 /**
@@ -22,8 +21,6 @@ function route(query: string): string | null {
 
 export function SearchBar() {
   const router = useRouter();
-  const params = useSearchParams();
-  const net = resolveNetwork(params.get("net"));
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +32,8 @@ export function SearchBar() {
       return;
     }
     setError(null);
-    router.push(withNetwork(target, net));
+    // Same host, so the search stays on the network the visitor is already on.
+    router.push(target);
   }
 
   return (
@@ -56,7 +54,6 @@ export function SearchBar() {
         autoComplete="off"
       />
       {error ? <span className="search-error">{error}</span> : null}
-      {net !== DEFAULT_NETWORK ? <input type="hidden" name="net" value={net} /> : null}
     </form>
   );
 }

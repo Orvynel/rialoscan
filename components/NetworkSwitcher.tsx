@@ -1,37 +1,58 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { DEFAULT_NETWORK, NETWORK_IDS, NETWORKS, resolveNetwork } from "@/lib/networks";
+import { usePathname } from "next/navigation";
+import { NETWORKS, NETWORK_IDS, originFor, type NetworkId } from "@/lib/networks";
 
 /**
- * Network lives in the URL rather than a cookie so that every link a user
- * copies out of RialoScan resolves to the same chain for whoever opens it.
+ * Switching network means changing host, so these are plain anchors to another
+ * origin rather than `next/link` — there is nothing for the client router to
+ * prefetch across a hostname boundary.
+ *
+ * The path is carried over deliberately. Asking for the same transaction on the
+ * other chain and getting a 404 is the honest answer; quietly bouncing to the
+ * home page would hide that the two networks have separate state.
+ *
+ * `host` and `protocol` come from the server rather than `window.location` so
+ * the markup is identical on both sides of hydration.
  */
-export function NetworkSwitcher() {
+export function NetworkSwitcher({
+  net,
+  host,
+  protocol,
+}: {
+  net: NetworkId;
+  host: string;
+  protocol: string;
+}) {
   const pathname = usePathname();
-  const params = useSearchParams();
-  const active = resolveNetwork(params.get("net"));
 
   return (
     <div className="netswitch" role="group" aria-label="Network">
       {NETWORK_IDS.map((id) => {
-        const next = new URLSearchParams(params);
-        if (id === DEFAULT_NETWORK) next.delete("net");
-        else next.set("net", id);
-        const query = next.toString();
-
+        const active = id === net;
+        if (active) {
+          return (
+            <span
+              key={id}
+              className="netswitch-option"
+              data-active="true"
+              aria-current="true"
+              title={NETWORKS[id].note}
+            >
+              {NETWORKS[id].label}
+            </span>
+          );
+        }
         return (
-          <Link
+          <a
             key={id}
-            href={query ? `${pathname}?${query}` : pathname}
+            href={`${originFor(id, host, protocol)}${pathname}`}
             className="netswitch-option"
-            data-active={id === active}
-            aria-current={id === active ? "true" : undefined}
+            data-active="false"
             title={NETWORKS[id].note}
           >
             {NETWORKS[id].label}
-          </Link>
+          </a>
         );
       })}
     </div>

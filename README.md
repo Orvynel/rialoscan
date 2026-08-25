@@ -1,7 +1,13 @@
 # RialoScan
 
-**[rialoscan.org](https://rialoscan.org)** — a block explorer for
-[Rialo](https://rialo.io), built directly on the node's JSON-RPC surface.
+A block explorer for [Rialo](https://rialo.io), built directly on the node's
+JSON-RPC surface.
+
+| | |
+|---|---|
+| **[devnet.rialoscan.org](https://devnet.rialoscan.org)** | Devnet explorer |
+| **[testnet.rialoscan.org](https://testnet.rialoscan.org)** | Testnet explorer |
+| [rialoscan.org](https://rialoscan.org) | Held for mainnet; serves a holding page only |
 
 Rialo is a Layer 1 from Subzero Labs, currently on devnet and testnet. It shares
 Solana's account model but replaces the VM (PolkaVM instead of SBF) and adds two
@@ -49,6 +55,13 @@ silently shows less than the truth is worse than one that explains the gap:
 - **No JSON-RPC batching.** A batch array is rejected with `-32602`. N pieces of
   data cost N round trips, so views that resolve many accounts deduplicate first
   and fan out concurrently.
+- **A block cannot be fetched without its transactions.** `getBlock` ignores
+  Solana's `transactionDetails`, `rewards` and `maxSupportedTransactionVersion`
+  — unknown fields are accepted silently and the response is always the full
+  block, ~91 KB on devnet and ~59 KB on testnet. Devnet also answers each
+  `getBlock` in a flat ~4.9 s regardless of concurrency. So `/blocks` cannot
+  fetch the blocks it lists; per-block counts come from the transaction feed,
+  and the window follows how far that feed reaches.
 - **`getTransaction` carries no timestamp.** `block_time` is always `null`; the
   containing block is the only source, so transaction pages fetch it.
 - **REX `created_at` renders as the year 58538** — milliseconds through a seconds
@@ -66,16 +79,17 @@ that two endpoints are describing the same machine.
 
 Similarly, `address` and `subdag_sync_address` are base64-wrapped *binary*
 multiaddrs. Decoded (`lib/multiaddr.ts`), they reveal three ports per node — the
-gossip port from `getClusterNodes` (4090 as of 2026-08-25), the registered port
-4000, and subdag sync on 4200. That looks like a data mismatch until you decode
-it, so `/validators` says so explicitly. Nothing compares against a hardcoded
-port; the gossip port has already moved once across a devnet redeploy.
+gossip port from `getClusterNodes` (4090 on devnet and 4040 on testnet as of
+2026-08-25), the registered port 4000, and subdag sync on 4200. That looks like a
+data mismatch until you decode it, so `/validators` says so explicitly. Nothing
+compares against a hardcoded port; the gossip port has already moved once across
+a devnet redeploy and is not even the same number on both networks.
 
 ## Routes
 
 | Route | Shows |
 |---|---|
-| `/` | Network overview: height, epoch, throughput, validators, latest blocks and transactions |
+| `/` | Network overview: height, epoch, throughput, validators, latest blocks and transactions. On the apex: the mainnet holding page |
 | `/blocks` | Recent blocks, joined against the transaction feed for per-block counts |
 | `/block/[height]` | One block: fees, compute, transactions, program chips |
 | `/txs` | The 100-transaction live feed |
@@ -84,19 +98,54 @@ port; the gossip port has already moved once across a devnet redeploy.
 | `/validators` | The validator set, joined across `getClusterNodes` and `getValidatorAccounts` on hostname |
 | `/rex` | REX requests, duty schedules, missed-duty counts per validator, and the TEE secret-sharing key |
 
-Add `?net=testnet` to any route, or use the switcher in the header.
+## One network per hostname
+
+Each network is a separate site. `devnet.rialoscan.org` serves devnet and
+nothing else; `testnet.rialoscan.org` serves testnet and nothing else. There is
+no network parameter and no default — the network is the first DNS label, and a
+hostname that names no known network returns 404 rather than guessing. Guessing
+is the one failure an explorer must not have: rendering one chain's data under
+another chain's URL is worse than an error page.
+
+The consequence is that every URL is self-describing. A signature pasted into
+chat says which chain it came from, and no link in the interface has to carry a
+network along with it.
+
+The bare domain is reserved for mainnet, which does not exist yet, so it serves
+one holding page listing both networks with their live heights. Explorer paths
+arriving there are redirected (308) to a network host — including old
+`?net=` URLs, which are honoured once as the redirect target and then dropped,
+so previously shared links still resolve. `proxy.ts` is the only file that does
+this, and the only one that changes when mainnet ships.
+
+Two escape hatches, both for deployments where DNS labels are not available:
+`RIALOSCAN_NETWORK` pins an entire deployment to one network (Vercel preview
+URLs, where `devnet.<preview-url>` would not resolve), and `RIALO_DEVNET_RPC` /
+`RIALO_TESTNET_RPC` override the endpoints.
+
+In development the same mechanism works unchanged, because nothing resolves the
+network against a hardcoded domain:
+
+```
+http://devnet.localhost:3000     http://testnet.localhost:3000
+http://localhost:3000            the holding page
+```
 
 ## Layout
 
 ```
+proxy.ts                    one network per hostname; apex redirects
 app/
   api/rpc/route.ts        server-side RPC proxy (the node sends no CORS header)
-  page.tsx                overview
+  page.tsx                overview on a network host, holding page on the apex
+  robots.ts sitemap.ts    per-hostname, since each host is a separate site
   blocks/ block/[height]/ txs/ tx/[signature]/ address/[address]/
   validators/ rex/ not-found.tsx
   globals.css             all styling; no CSS framework
 components/               presentational only, no fetching
 lib/
+  networks.ts             network identity and hostname arithmetic
+  host.ts                 resolves the network from the request's Host header
   rpc.ts                  transport, caching, error shapes
   json.ts                 BigInt-safe JSON parsing from raw source text
   chain.ts                every RPC method, decoded into typed values
@@ -105,7 +154,7 @@ lib/
   base58.ts               cross-encoding key identity
   multiaddr.ts            binary multiaddr decoding
   format.ts               locale-free formatting (kelvin/RLO, UTC, byte sizes)
-  networks.ts overview.ts
+  overview.ts
 ```
 
 `lib/chain.ts` is `server-only`. The Rialo RPC sends no
@@ -119,9 +168,11 @@ npm install
 npm run dev
 ```
 
-Then open <http://localhost:3000>. No environment variables and no API keys —
-the public endpoints (`https://devnet.rialo.io`, `https://testnet.rialo.io`) need
-neither.
+Then open <http://devnet.localhost:3000> or <http://testnet.localhost:3000> —
+`*.localhost` resolves to loopback in every current browser, so the hostname
+mechanism needs no `/etc/hosts` entry. <http://localhost:3000> is the apex
+holding page. No environment variables and no API keys — the public endpoints
+(`https://devnet.rialo.io`, `https://testnet.rialo.io`) need neither.
 
 To build:
 
@@ -159,10 +210,13 @@ a bounded preview, and an expand toggle.
 
 ## Status
 
-Devnet state is wiped without notice and the node is `0.17.0-alpha.0`, so
-decoded shapes can change under us. Every decoder in `lib/chain.ts` was written
-against a live probe rather than from documentation, and tolerates missing
-fields instead of throwing. When Rialo ships changes, the scripts in
-[`probes/`](probes/) re-run in seconds and show what moved.
+The two networks do not run the same node build: devnet is `0.17.0-alpha.0` and
+testnet is `0.18.1` as of 2026-08-25, so testnet is ahead. Their traffic differs
+about as much — devnet produces roughly 3 transactions per block, testnet 20 to
+90. Devnet state is wiped without notice. Every decoder in `lib/chain.ts` was
+written against a live probe rather than from documentation, and tolerates
+missing fields instead of throwing, which is what lets one codebase read both
+versions. When Rialo ships changes, the scripts in [`probes/`](probes/) re-run in
+seconds and show what moved.
 
 Not affiliated with Subzero Labs.

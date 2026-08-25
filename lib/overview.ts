@@ -126,6 +126,60 @@ export type Overview = {
   renderedAt: number;
 };
 
+export type NetworkCard = {
+  network: NetworkId;
+  blockHeight: bigint | null;
+  epoch: EpochInfo | null;
+  transactionCount: bigint | null;
+  health: string | null;
+  apiVersion: string | null;
+  validatorsOnline: number;
+  validatorsTotal: number;
+  /** Answered the most basic read there is. Distinguishes "quiet" from "down". */
+  reachable: boolean;
+  renderedAt: number;
+};
+
+/**
+ * The subset of `loadOverview` a summary card needs, for the apex page that
+ * shows both networks at once.
+ *
+ * Deliberately does not call `getTransactions`: that returns 100 full
+ * transactions with base58 REX payloads inlined and can run to tens of
+ * kilobytes, which is a lot to fetch twice over for two numbers. The cost is
+ * that a card cannot show tx/s, since the rate is derived from that window.
+ */
+export async function loadNetworkCard(network: NetworkId): Promise<NetworkCard> {
+  const errors: string[] = [];
+
+  const [blockHeight, epoch, txCount, health, nodes, connected] = await Promise.all([
+    safe("getBlockHeight", getBlockHeight(network), null as bigint | null, errors),
+    safe("getEpochInfo", getEpochInfo(network), null as EpochInfo | null, errors),
+    safe(
+      "getTransactionCount",
+      getTransactionCount(network),
+      { count: null, apiVersion: null } as { count: bigint | null; apiVersion: string | null },
+      errors,
+    ),
+    safe("getHealth", getHealth(network), null as string | null, errors),
+    safe("getClusterNodes", getClusterNodes(network), [] as ClusterNode[], errors),
+    safe("getConnectedValidators", getConnectedValidators(network), [] as number[], errors),
+  ]);
+
+  return {
+    network,
+    blockHeight,
+    epoch,
+    transactionCount: txCount.count,
+    health,
+    apiVersion: txCount.apiVersion,
+    validatorsOnline: connected.length,
+    validatorsTotal: Math.max(nodes.length, connected.length),
+    reachable: blockHeight !== null,
+    renderedAt: fetchedAt(),
+  };
+}
+
 export async function loadOverview(network: NetworkId): Promise<Overview> {
   const errors: string[] = [];
 
