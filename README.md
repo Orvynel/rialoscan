@@ -65,9 +65,11 @@ ways. Joining those endpoints on key equality matches zero rows.
 that two endpoints are describing the same machine.
 
 Similarly, `address` and `subdag_sync_address` are base64-wrapped *binary*
-multiaddrs. Decoded (`lib/multiaddr.ts`), they reveal three ports per node —
-4070 consensus, 4000 registered, 4200 subdag sync. That looks like a data
-mismatch until you decode it, so `/validators` says so explicitly.
+multiaddrs. Decoded (`lib/multiaddr.ts`), they reveal three ports per node — the
+gossip port from `getClusterNodes` (4090 as of 2026-08-25), the registered port
+4000, and subdag sync on 4200. That looks like a data mismatch until you decode
+it, so `/validators` says so explicitly. Nothing compares against a hardcoded
+port; the gossip port has already moved once across a devnet redeploy.
 
 ## Routes
 

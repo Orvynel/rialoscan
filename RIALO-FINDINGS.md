@@ -304,11 +304,18 @@ address              -> /dns/node2.devnet.rialo.io/udp/4000
 subdag_sync_address  -> /dns/node2.devnet.rialo.io/udp/4200
 ```
 
-`getClusterNodes` reports `/dns/node2.devnet.rialo.io/udp/4070` for the same
-validator. **Three different ports per node, all legitimate:** 4070 consensus,
-4000 registered, 4200 subdag sync. This reads as a data mismatch until the
+`getClusterNodes` reports a *third* port for the same validator, as plain text
+rather than base64. **Three different ports per node, all legitimate:** the
+gossip port from `getClusterNodes`, the registered port (4000) and subdag sync
+(4200) from the on-chain account. This reads as a data mismatch until the
 multiaddrs are decoded, at which point it is simply three services. Decoder:
 `lib/multiaddr.ts`.
+
+The gossip port is the one value here that is not stable: it was 4070 when first
+probed and is **4090** on all four nodes as of 2026-08-25, while the two on-chain
+ports have not moved. Devnet is redeployed without notice, so nothing in this
+document treats a port as a constant — `lib/multiaddr.ts` reads whatever the node
+reports and never compares against a hardcoded number.
 
 ### 8.2 — Units are unlabelled in two places
 

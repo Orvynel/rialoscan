@@ -5,9 +5,11 @@
  * `subdag_sync_address` as base64-encoded *binary* multiaddrs, not strings —
  * `"NRVub2RlMi5kZXZuZXQucmlhbG8uaW+RAg+g"` is
  * `/dns/node2.devnet.rialo.io/udp/4000`. Displayed raw they are unreadable, and
- * they carry information `getClusterNodes` does not: the consensus port there
- * (4070) is a different port from the one the validator registered on chain
- * (4000), with subdag sync on a third (4200).
+ * they carry information `getClusterNodes` does not: the gossip port reported
+ * there is a different port from the one the validator registered on chain
+ * (4000), with subdag sync on a third (4200). The gossip port has already
+ * changed once across a devnet redeploy, so nothing here is compared against a
+ * hardcoded value — whatever the node reports is what gets decoded.
  *
  * Only the protocols Rialo actually uses are implemented. Anything else degrades
  * to a marker rather than guessing.

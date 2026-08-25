@@ -408,7 +408,7 @@ export function nativeProgramName(account: AccountInfo | null): string | null {
 
 export type ClusterNode = {
   hostname: string;
-  /** Human multiaddr, e.g. `/dns/node0.devnet.rialo.io/udp/4070`. */
+  /** Human multiaddr, e.g. `/dns/node0.devnet.rialo.io/udp/4090`. */
   address: string;
   stake: bigint;
   /** base64, unlike the base58 keys in `getValidatorAccounts`. */

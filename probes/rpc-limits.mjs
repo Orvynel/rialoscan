@@ -78,18 +78,21 @@ if (list1.length > 1) {
 }
 
 // --- 4. getTransactions: signatures / limit / before ---------------------
+// The params array itself is mandatory: `params: []` is rejected with -32602
+// "Malformed JSON, missing params". So the baseline here is an empty *filter*
+// object, not an absent one — calling it "no params" would misdescribe it.
 const t1 = await rpc("getTransactions", [{}]);
 const feed = pluck(t1.result) ?? [];
 line("\n4. getTransactions");
-line(`   no params      -> ${feed.length} transactions`);
+line(`   empty filter {} -> ${feed.length} transactions`);
 const t2 = await rpc("getTransactions", [{ limit: 2 }]);
 const feed2 = pluck(t2.result) ?? [];
-line(`   limit: 2       -> ${feed2.length}  (honoured: ${feed2.length === 2})`);
+line(`   limit: 2        -> ${feed2.length}  (honoured: ${feed2.length === 2})`);
 if (feed.length > 0) {
   const one = feed[0].transaction?.signatures?.[0] ?? feed[0].signature;
   const t3 = await rpc("getTransactions", [{ signatures: [one] }]);
   const feed3 = pluck(t3.result) ?? [];
-  line(`   signatures:[1] -> ${feed3.length}  (filtered: ${feed3.length === 1})`);
+  line(`   signatures:[1]  -> ${feed3.length}  (filtered: ${feed3.length === 1})`);
 }
 
 // --- 5. getTransaction over raw RPC (the SDK-only bug) -------------------
