@@ -184,7 +184,8 @@ JSON parse (lossless-json / reviver on raw text), not `BigInt(Number(x))`.
 
 Distinct from §6: these are not client bugs. They reproduce over raw JSON-RPC
 with `fetch`, so any explorer, indexer or wallet built on Rialo today inherits
-them. Repro: `node probes/rpc-limits.mjs` and `node probes/before.mjs`.
+them. Repro: `node probes/rpc-limits.mjs`, `node probes/before.mjs` and
+`node probes/blocks.mjs`.
 
 ### 7.1 — `getTransactions` ignores every filter parameter
 
@@ -266,6 +267,83 @@ same object formats correctly as `2026-08-23 04:22:27.700 UTC`, which is how we
 know it is a formatting bug and not a bad stored value. RialoScan shows
 `created_at` verbatim rather than deriving a date from it.
 
+### 7.7 — `getBlock` has no lightweight form, and devnet answers it in ~4.9 s
+
+Solana's `getBlock` takes `transactionDetails: "none" | "signatures" | "full"`
+so a caller can ask for a block's shape without its payload. Rialo's does not.
+Sending it — or `rewards: false`, or `maxSupportedTransactionVersion: 0` — is
+accepted silently and changes nothing; the response is byte-identical to the
+baseline, always the complete block:
+
+```
+block 17738959 (devnet), same request with each extra field:
+  transactionDetails:signatures      93593 B   4607 ms
+  transaction_details:none           93593 B   4901 ms
+  rewards:false                      93593 B   8744 ms
+  maxSupportedTransactionVersion:0   93593 B   8609 ms
+```
+
+Unknown fields are ignored rather than rejected, so there is no error to
+discover this from — only the identical byte counts.
+
+Devnet's latency is also a floor, not congestion. Five sequential calls:
+`4906 4897 4903 4905 4902` ms — a ~4.9 s constant. Ten in parallel finish in
+8.3 s, so concurrency helps but the floor dominates. Testnet answers the same
+call in 144–577 ms.
+
+Consequence for an explorer: a block *list* cannot fetch the blocks it lists.
+Fifty devnet blocks would be 4.5 MB and well past any sane request budget.
+`/blocks` therefore derives per-block counts from the 100-transaction feed and
+sizes its window to how far that feed actually reaches — about 35 blocks on
+devnet at 3 transactions each, but only 3 on testnet at 20–90.
+
+### 7.8 — The two networks run different node builds, and `getVersion` does not report them
+
+`getVersion` does not return a version. It returns a bare git commit SHA as a
+plain string — not Solana's `{"solana-core": …}` object, and not wrapped in
+`{context, value}` like almost every other method:
+
+```
+devnet   getVersion -> "16173485029a3d9e8892fc67964ac133b1fdf897"
+testnet  getVersion -> "2e1fdefe31cc6569006a4d5a96a2316d3ecc6c93"
+```
+
+The readable build number is only ever present as `context.api_version`, riding
+along on any wrapped response:
+
+```
+devnet   getValidatorAccounts.context.api_version -> 0.17.0-alpha.0
+testnet  getValidatorAccounts.context.api_version -> 0.18.1
+```
+
+So the two networks are on different builds, and **testnet is ahead of devnet**,
+which is the reverse of the usual order. Every finding above was confirmed on
+both unless stated otherwise, and no decoder depends on a version string — but
+it means devnet is not a preview of testnet, and a shape verified on one is not
+evidence about the other. Two SHAs cannot be compared for ordering, which is why
+RialoScan displays `api_version` and treats `getVersion` as an opaque build
+identifier (`lib/chain.ts`).
+
+### 7.9 — `getBlockHeight` is a snapshot of a fast-moving head
+
+Not a defect, but it invalidates the obvious way to build a block list. Devnet
+advances ~6–18 blocks per second. Read the height first and the transaction feed
+second, and the feed comes back describing blocks *above* the height just
+observed:
+
+```
+getBlockHeight = 17740822
+feed newest    = 17740856   (34 heights further on)
+feed oldest    = 17740821
+```
+
+Issued in the same round trip, `getBlockHeight`, `getEpochInfo.blockHeight` and
+the feed's newest height agree to within two blocks. So the 34-block gap is
+elapsed time, not a lagging counter. Anchoring a 50-block window to the earlier
+value puts the window almost entirely below the feed's coverage, which produced
+a list of dashes on a chain that had transactions in every block. `/blocks`
+reads the height and the feed concurrently and anchors to whichever saw further.
+
 ## 8. The same key in three encodings across three endpoints
 
 Not a bug, but an interoperability trap that silently produces empty joins.
@@ -311,19 +389,28 @@ gossip port from `getClusterNodes`, the registered port (4000) and subdag sync
 multiaddrs are decoded, at which point it is simply three services. Decoder:
 `lib/multiaddr.ts`.
 
-The gossip port is the one value here that is not stable: it was 4070 when first
-probed and is **4090** on all four nodes as of 2026-08-25, while the two on-chain
-ports have not moved. Devnet is redeployed without notice, so nothing in this
-document treats a port as a constant — `lib/multiaddr.ts` reads whatever the node
-reports and never compares against a hardcoded number.
+The gossip port is the one value here that is not stable, and it is not even the
+same across networks: it was 4070 when first probed, is **4090** on all four
+devnet nodes as of 2026-08-25, and **4040** on all four testnet nodes on the same
+day, while the two on-chain ports (4000, 4200) have not moved on either network.
+Devnet is redeployed without notice, so nothing in this document treats a port as
+a constant — `lib/multiaddr.ts` reads whatever the node reports and never
+compares against a hardcoded number.
 
 ### 8.2 — Units are unlabelled in two places
 
 - `getValidatorAccounts[].stake` is `1` per validator on devnet. This is stake
   *units*, not kelvin — treating it as kelvin would report 1 billionth of an
   RLO staked.
-- `commission_rate` is the integer `0` with no stated denominator. RialoScan shows
-  it unscaled rather than guessing it is a percentage or a basis-point value.
+- **`commission` and `commission_rate` are two different fields on the same
+  object**, and only one of them is a rate. `commission` is accrued commission in
+  kelvin and is large (4,490,200 on devnet and 4,510,080 on testnet as of
+  2026-08-25); `commission_rate` is `0` on every validator on both networks, with
+  no stated denominator, alongside a third field `new_commission_rate`. Reading
+  `commission` as a rate reports a 4.5-million-percent fee; reading
+  `commission_rate` as the earned amount reports zero income. RialoScan shows the
+  first as RLO and the second unscaled, labelled as an integer, rather than
+  guessing whether it is a percentage or a basis-point value.
 
 ## 9. Reproducing
 
@@ -339,6 +426,7 @@ node u64.mjs          # bug 3
 # Node RPC limitations (§7)
 node rpc-limits.mjs   # batching, getAllAccounts, filter params, REX created_at
 node before.mjs       # `before` is ignored, with a churn control
+node blocks.mjs       # no lightweight getBlock, node builds, head vs feed (both networks)
 
 # Encodings and addresses (§8)
 node validators.mjs   # multiaddr decode, cross-encoding key identity
