@@ -14,12 +14,14 @@ export const metadata = { title: "Blocks" };
 
 /**
  * How many heights to list. Rialo has no lightweight block query — `getBlock`
- * always returns every transaction in full, and on devnet takes about five
- * seconds each — so per-block detail cannot be fetched for a list. It comes
- * from the transaction feed instead, and the feed only reaches as far back as
- * its last 100 transactions: about 35 blocks on devnet at 3 transactions each,
- * but only 3 on testnet at 60. The window follows that reach rather than
- * padding the page with rows nothing can describe.
+ * always returns every transaction in full — so per-block detail cannot be
+ * fetched for a list. It comes from the transaction feed instead, and the feed
+ * only reaches as far back as its last 100 transactions. How far that is depends
+ * entirely on transaction density, which is not stable: within one day devnet
+ * went from 3 transactions per block (36 heights of reach) to 1 (100 heights),
+ * and testnet from ~65 to 1 without even changing node build. So the window is
+ * measured per request rather than assumed, and never pads the page with rows
+ * nothing can describe.
  */
 const WINDOW_MAX = 50;
 const WINDOW_MIN = 16;
@@ -157,8 +159,9 @@ export default async function BlocksPage() {
           Transaction counts and times come from the latest 100 transactions, which reach back{" "}
           {reach === 0 ? "no blocks" : `${reach} ${plural(reach, "block")}`} and cover {covered.length} of
           these {ordered.length}. A dash means the block falls outside that window — not that it is empty.
-          Rialo has no way to ask for a block without its full transaction list, so counts for older blocks
-          would cost one multi-megabyte request each. Open a block to read its transactions directly.
+          Rialo has no way to ask for a block without its full transaction list, so covering the rest would
+          cost one whole-block request per row — which has meant anything from a kilobyte to 91 KB and five
+          seconds per block, depending on the node build. Open a block to read its transactions directly.
         </div>
       </Panel>
     </>

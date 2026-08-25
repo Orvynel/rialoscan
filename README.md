@@ -58,10 +58,11 @@ silently shows less than the truth is worse than one that explains the gap:
 - **A block cannot be fetched without its transactions.** `getBlock` ignores
   Solana's `transactionDetails`, `rewards` and `maxSupportedTransactionVersion`
   — unknown fields are accepted silently and the response is always the full
-  block, ~91 KB on devnet and ~59 KB on testnet. Devnet also answers each
-  `getBlock` in a flat ~4.9 s regardless of concurrency. So `/blocks` cannot
-  fetch the blocks it lists; per-block counts come from the transaction feed,
-  and the window follows how far that feed reaches.
+  block. What that costs is not fixed: a devnet block was 91 KB and took ~4.9 s
+  on node `0.17.0-alpha.0`, and ~1 KB in ~150 ms on `0.19.0-alpha.0` later the
+  same day. So `/blocks` does not fetch the blocks it lists; per-block counts
+  come from the transaction feed, and the window follows how far that feed
+  reaches.
 - **`getTransaction` carries no timestamp.** `block_time` is always `null`; the
   containing block is the only source, so transaction pages fetch it.
 - **REX `created_at` renders as the year 58538** — milliseconds through a seconds
@@ -210,13 +211,19 @@ a bounded preview, and an expand toggle.
 
 ## Status
 
-The two networks do not run the same node build: devnet is `0.17.0-alpha.0` and
-testnet is `0.18.1` as of 2026-08-25, so testnet is ahead. Their traffic differs
-about as much — devnet produces roughly 3 transactions per block, testnet 20 to
-90. Devnet state is wiped without notice. Every decoder in `lib/chain.ts` was
-written against a live probe rather than from documentation, and tolerates
+Both networks are live and neither is a preview of the other: they run different
+node builds, and which one leads changes. On the morning of 2026-08-25 testnet
+led with `0.18.1` against devnet's `0.17.0-alpha.0`; by that evening devnet had
+been wiped and redeployed as `0.19.0-alpha.0`, its height reset from 17.7M to
+2.7M, while testnet had not moved. Transaction density moved independently of
+the build over the same day — devnet went from 3 transactions per block to 1,
+and testnet from 20–90 to 1 without changing version at all.
+
+Nothing here is calibrated against those numbers. Every decoder in `lib/chain.ts`
+was written against a live probe rather than from documentation and tolerates
 missing fields instead of throwing, which is what lets one codebase read both
-versions. When Rialo ships changes, the scripts in [`probes/`](probes/) re-run in
-seconds and show what moved.
+builds; `/blocks` measures the transaction feed's reach on each request instead
+of assuming a density. When Rialo ships changes, the scripts in
+[`probes/`](probes/) re-run in seconds and show what moved.
 
 Not affiliated with Subzero Labs.

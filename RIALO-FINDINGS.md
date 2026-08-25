@@ -51,6 +51,11 @@ Observed 2026-08-23:
 - Faucet: `requestAirdrop` works over plain RPC, no captcha. CLI caps at 1 RLO
   per request (per AGENTS.md); RPC accepted 1 RLO.
 
+Re-observed 2026-08-25, after devnet was wiped and redeployed — heights are not
+monotonic across a redeploy, so nothing may be cached against them (§7.10):
+- devnet: blockHeight ~2,728,000, epoch 1, ~180K txs, node `0.19.0-alpha.0`
+- testnet: blockHeight ~2,764,000, epoch 5, ~23.1M txs, node `0.18.1`
+
 38 RPC methods. Solana-shaped but **not** Solana-compatible: no `getSlot`,
 no `getGenesisHash`, no `getLatestBlockhash`. Rialo-only methods:
 `getRexRequests`, `getRexMissedDuties`, `getTriggeredTransactions`,
@@ -267,35 +272,66 @@ same object formats correctly as `2026-08-23 04:22:27.700 UTC`, which is how we
 know it is a formatting bug and not a bad stored value. RialoScan shows
 `created_at` verbatim rather than deriving a date from it.
 
-### 7.7 — `getBlock` has no lightweight form, and devnet answers it in ~4.9 s
+### 7.7 — `getBlock` has no lightweight form
 
 Solana's `getBlock` takes `transactionDetails: "none" | "signatures" | "full"`
 so a caller can ask for a block's shape without its payload. Rialo's does not.
-Sending it — or `rewards: false`, or `maxSupportedTransactionVersion: 0` — is
-accepted silently and changes nothing; the response is byte-identical to the
-baseline, always the complete block:
+Sending it — or `transaction_details`, `rewards: false`, or
+`maxSupportedTransactionVersion: 0` — is accepted silently and changes nothing;
+the response is byte-identical to the baseline, always the complete block.
+Unknown fields are ignored rather than rejected, so there is no error to discover
+this from — only the identical byte counts. This has held on every build probed,
+including across the devnet upgrade below.
+
+The *cost* of that, however, is not a constant, and this section previously
+reported it as if it were. Two measurements of the same call:
 
 ```
-block 17738959 (devnet), same request with each extra field:
-  transactionDetails:signatures      93593 B   4607 ms
-  transaction_details:none           93593 B   4901 ms
-  rewards:false                      93593 B   8744 ms
-  maxSupportedTransactionVersion:0   93593 B   8609 ms
+devnet 0.17.0-alpha.0, block 17738959, 3 txs   93593 B   ~4900 ms
+devnet 0.19.0-alpha.0, block  2728231, 1 tx     1073 B    ~150 ms
 ```
 
-Unknown fields are ignored rather than rejected, so there is no error to
-discover this from — only the identical byte counts.
+On `0.17.0-alpha.0` devnet had a hard ~4.9 s floor per call — five sequential
+requests measured `4906 4897 4903 4905 4902` ms, and ten in parallel still took
+8.3 s, so concurrency helped but the floor dominated. On `0.19.0-alpha.0` the
+same call answers in ~150 ms. Part of that is smaller blocks (see §7.10) and
+part is the build; the two changed together, so they cannot be separated from
+outside.
 
-Devnet's latency is also a floor, not congestion. Five sequential calls:
-`4906 4897 4903 4905 4902` ms — a ~4.9 s constant. Ten in parallel finish in
-8.3 s, so concurrency helps but the floor dominates. Testnet answers the same
-call in 144–577 ms.
+Consequence for an explorer: the shape of the limit is permanent even though its
+cost is not. A block *list* still cannot safely fetch the blocks it lists,
+because the only guarantee is that each response is a whole block, and a whole
+block was 91 KB and five seconds as recently as 2026-08-25. `/blocks` therefore
+derives per-block counts from the 100-transaction feed and sizes its window to
+how far that feed actually reaches, which makes it correct at 1 tx/block and at
+90 without a code change.
 
-Consequence for an explorer: a block *list* cannot fetch the blocks it lists.
-Fifty devnet blocks would be 4.5 MB and well past any sane request budget.
-`/blocks` therefore derives per-block counts from the 100-transaction feed and
-sizes its window to how far that feed actually reaches — about 35 blocks on
-devnet at 3 transactions each, but only 3 on testnet at 20–90.
+### 7.10 — Chain characteristics are not stable enough to hardcode
+
+Every volatile number in this document moved inside a single day, which is worth
+recording as a finding in its own right rather than as an erratum.
+
+Between the morning and evening of **2026-08-25**, devnet was wiped and upgraded:
+
+| | morning | evening |
+|---|---|---|
+| devnet `api_version` | `0.17.0-alpha.0` | `0.19.0-alpha.0` |
+| devnet `getVersion` SHA | `16173485…` | `0cc4dd69…` |
+| devnet block height | 17,752,346 | 2,728,236 (reset) |
+| devnet `getBlock` | 93,588 B / ~4900 ms | 1,073 B / ~150 ms |
+| devnet txs per block | 3 | 1 |
+| testnet txs per block | 20–90 | 1 |
+| feed reach (100 txs) | 36 heights devnet, 2 testnet | ~100 heights both |
+
+Testnet's `api_version` and SHA did **not** change, yet its transactions per
+block fell from ~65 to 1, so traffic shape moves independently of the build.
+
+Two consequences RialoScan is built around. First, no view derives a layout or a
+window size from an assumed transaction density — `/blocks` measures the feed's
+reach on every request. Second, a finding is only durable if it is stated
+structurally: "there is no lightweight form" survived the upgrade, while
+"devnet answers in ~4.9 s" did not. Numbers in this document are dated
+observations; the sentences around them are the findings.
 
 ### 7.8 — The two networks run different node builds, and `getVersion` does not report them
 
@@ -316,33 +352,41 @@ devnet   getValidatorAccounts.context.api_version -> 0.17.0-alpha.0
 testnet  getValidatorAccounts.context.api_version -> 0.18.1
 ```
 
-So the two networks are on different builds, and **testnet is ahead of devnet**,
-which is the reverse of the usual order. Every finding above was confirmed on
-both unless stated otherwise, and no decoder depends on a version string — but
-it means devnet is not a preview of testnet, and a shape verified on one is not
-evidence about the other. Two SHAs cannot be compared for ordering, which is why
-RialoScan displays `api_version` and treats `getVersion` as an opaque build
-identifier (`lib/chain.ts`).
+So the two networks are on different builds, and **which one is ahead changes**.
+On the morning of 2026-08-25 testnet led (`0.18.1` against devnet's
+`0.17.0-alpha.0`); by that evening devnet had been redeployed to
+`0.19.0-alpha.0` and led instead, while testnet had not moved. Every finding
+above was confirmed on both unless stated otherwise, and no decoder depends on a
+version string — but it means neither network is a preview of the other, and a
+shape verified on one is not evidence about the other.
+
+Two SHAs cannot be compared for ordering, and the semvers cannot be relied on to
+order the same way twice, which is why RialoScan displays `api_version` as a
+label and never branches on it (`lib/chain.ts`).
 
 ### 7.9 — `getBlockHeight` is a snapshot of a fast-moving head
 
-Not a defect, but it invalidates the obvious way to build a block list. Devnet
-advances ~6–18 blocks per second. Read the height first and the transaction feed
-second, and the feed comes back describing blocks *above* the height just
-observed:
+Not a defect, but it invalidates the obvious way to build a block list. Read the
+height first and the transaction feed second, and the feed comes back describing
+blocks *above* the height just observed:
 
 ```
-getBlockHeight = 17740822
-feed newest    = 17740856   (34 heights further on)
-feed oldest    = 17740821
+2026-08-25, devnet at ~6-18 blocks/s:
+  getBlockHeight = 17740822
+  feed newest    = 17740856   (34 heights further on)
+  feed oldest    = 17740821
 ```
 
 Issued in the same round trip, `getBlockHeight`, `getEpochInfo.blockHeight` and
-the feed's newest height agree to within two blocks. So the 34-block gap is
-elapsed time, not a lagging counter. Anchoring a 50-block window to the earlier
-value puts the window almost entirely below the feed's coverage, which produced
-a list of dashes on a chain that had transactions in every block. `/blocks`
-reads the height and the feed concurrently and anchors to whichever saw further.
+the feed's newest height agree to within two blocks. So the gap is elapsed time,
+not a lagging counter.
+
+The size of the gap tracks the block rate and is therefore not a constant either:
+at ~7 blocks/s on devnet `0.19.0-alpha.0` the same sequential read gaps by 1–3
+instead of 34. That makes the bug *quieter*, not absent, which is the dangerous
+case — anchoring a window to the earlier value puts it below the feed's coverage
+whenever the chain speeds up. `/blocks` reads the height and the feed
+concurrently and anchors to whichever saw further, so the gap cannot open at all.
 
 ## 8. The same key in three encodings across three endpoints
 
