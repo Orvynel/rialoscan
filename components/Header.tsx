@@ -6,6 +6,7 @@ import type { NetworkId } from "@/lib/networks";
 import { Mark } from "./Icons";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { SearchBar } from "./SearchBar";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { href: "/", label: "Overview" },
@@ -17,7 +18,8 @@ const NAV = [
 
 /**
  * `net` is null on the bare domain, which serves no chain — there is nothing to
- * search and nowhere to navigate, so the header is reduced to the wordmark.
+ * search and nowhere to navigate, so the header is reduced to the wordmark and
+ * the theme toggle.
  *
  * Navigation hrefs carry no network because the hostname already does, which is
  * also why this component no longer reads the query string and the layout no
@@ -65,6 +67,10 @@ export function Header({
             <NetworkSwitcher net={net} host={host} protocol={protocol} />
           </>
         )}
+
+        {/* Outside the guard: the bare domain has no chain to search or switch,
+            but it is still a page someone reads, so it still gets the theme. */}
+        <ThemeToggle host={host} />
       </div>
     </header>
   );

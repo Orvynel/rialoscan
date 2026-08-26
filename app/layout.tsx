@@ -3,6 +3,7 @@ import { Geist_Mono, Inter } from "next/font/google";
 import { Header } from "@/components/Header";
 import { requestHost, requestNetwork } from "@/lib/host";
 import { NETWORKS, SITE_DOMAIN } from "@/lib/networks";
+import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 // Inter for prose (Rialo loads it too); Geist Mono for every hash, height and
@@ -53,8 +54,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [{ host, protocol }, net] = await Promise.all([requestHost(), requestNetwork()]);
 
   return (
-    <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
+    // `suppressHydrationWarning` covers this element only: the script below sets
+    // `data-theme` on it before React hydrates, so the attribute is legitimately
+    // present in the DOM and absent from the server markup.
+    <html lang="en" className={`${inter.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body>
+        {/* First child of <body> so it executes before anything is painted. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+
         <Header net={net} host={host} protocol={protocol} />
 
         <main className="shell page">{children}</main>

@@ -155,6 +155,7 @@ lib/
   base58.ts               cross-encoding key identity
   multiaddr.ts            binary multiaddr decoding
   format.ts               locale-free formatting (kelvin/RLO, UTC, byte sizes)
+  theme.ts                the pre-paint theme script and the cookie it reads
   overview.ts
 ```
 
@@ -202,6 +203,21 @@ literally named `kelvin`. The transfer fee is exactly 5000 kelvin.
 **Formatting is locale-free.** Every timestamp renders as explicit UTC and every
 number groups digits manually, so server and client output are byte-identical
 and hydration never mismatches.
+
+**Light and dark, with no flash of the wrong one.** The palette is a single block
+of custom properties, so the light theme overrides that block and nothing else —
+which is why every colour in `globals.css` is a token, including the tints. A
+literal `rgba()` would survive the swap and be wrong in one of the two themes.
+Light is not an inversion: inverting gives a cold page and a mint accent at
+1.3:1 against it, so instead the two materials trade places — parchment becomes
+the ground, near-black becomes the ink — and the mint darkens until it carries
+text. The choice lives in `<html data-theme>` and is applied by a blocking inline
+script before first paint; anything waiting for hydration would paint the default
+palette and correct it a moment later. The toggle holds no React state and its
+two glyphs are picked by CSS from that same attribute, so the button is also
+right on the first paint rather than after mounting. The cookie is scoped to the
+apex rather than the origin, because one network per hostname would otherwise
+mean the theme was forgotten every time someone used the network switcher.
 
 **Truncation is always labelled.** The largest instruction payload observed on
 devnet is 89,350 base58 characters — a PolkaVM program blob being deployed.

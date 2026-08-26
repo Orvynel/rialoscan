@@ -121,3 +121,20 @@ export function originFor(net: NetworkId, host?: string | null, protocol = "http
   if (host && isAddressableHost(host)) return `${scheme}://${hostFor(host, net)}`;
   return `https://${net}.${SITE_DOMAIN}`;
 }
+
+/**
+ * Domain to scope the theme cookie to. One network per host means the two
+ * explorers are separate origins with separate storage, so a preference saved
+ * per-origin would be forgotten the moment someone used the network switcher —
+ * which looks like the theme breaking rather than a storage boundary. Scoping to
+ * the apex makes the choice one preference across all of them.
+ *
+ * Null for anything that is not the real domain. Browsers treat `localhost` as a
+ * public suffix and reject a `domain` attribute naming it, and a preview URL has
+ * no sibling hosts to share with; a host-only cookie is correct for both.
+ */
+export function cookieDomain(host: string | null | undefined): string | null {
+  if (!host) return null;
+  const name = splitHost(host).name.toLowerCase();
+  return name === SITE_DOMAIN || name.endsWith(`.${SITE_DOMAIN}`) ? SITE_DOMAIN : null;
+}

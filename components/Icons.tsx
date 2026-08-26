@@ -35,3 +35,30 @@ export function CheckIcon({ size = 12 }: { size?: number }) {
     </svg>
   );
 }
+
+export function SunIcon({ size = 14 }: { size?: number }) {
+  // Eight rays rather than a filled disc, so it sits at the same visual weight
+  // as the other outline icons in the header.
+  return (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="2.7" stroke="currentColor" strokeWidth="1.15" />
+      <g stroke="currentColor" strokeWidth="1.15" strokeLinecap="round">
+        <path d="M7 0.9v1.5M7 11.6v1.5M0.9 7h1.5M11.6 7h1.5" />
+        <path d="M2.7 2.7l1.1 1.1M10.2 10.2l1.1 1.1M11.3 2.7l-1.1 1.1M3.8 10.2l-1.1 1.1" />
+      </g>
+    </svg>
+  );
+}
+
+export function MoonIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M11.4 8.9A5.1 5.1 0 0 1 5.1 2.6a5.1 5.1 0 1 0 6.3 6.3Z"
+        stroke="currentColor"
+        strokeWidth="1.15"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
