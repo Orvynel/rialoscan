@@ -44,6 +44,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except the RPC proxy (which is network-agnostic and takes `?net=`),
-  // build output, and the files crawlers fetch from the apex by name.
-  matcher: ["/((?!api/|_next/|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)"],
+  // build output, and the files crawlers fetch from the apex by name. The icons and
+  // the link-preview card have to be served *by* the apex: a favicon that answers
+  // with a cross-host redirect is one Google is entitled to give up on, and the
+  // apex's own card is not devnet's.
+  matcher: [
+    "/((?!api/|_next/|favicon\\.ico|icon\\.svg|apple-icon\\.png|opengraph-image|robots\\.txt|sitemap\\.xml).*)",
+  ],
 };

@@ -48,7 +48,9 @@ export async function generateMetadata(): Promise<Metadata> {
     // gets its own canonical and og:url without repeating this in eight files.
     alternates: { canonical: "./" },
     openGraph: { title, description, siteName: "RialoScan", url: "./", type: "website" },
-    twitter: { card: "summary", title, description },
+    // The wide card, because `app/opengraph-image.tsx` fills 1200x630 — `summary`
+    // would crop it to a square thumbnail.
+    twitter: { card: "summary_large_image", title, description },
     robots: { index: true, follow: true },
   };
 }

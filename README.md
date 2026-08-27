@@ -144,6 +144,8 @@ app/
   validators/ rex/ not-found.tsx
   globals.css             all styling; no CSS framework
   icon.svg favicon.ico    the mark, sized for a browser tab and a search result
+  opengraph-image.tsx     the 1200x630 card link previews show, per hostname
+  og/                     Geist Mono for that card; Satori cannot read woff2
 components/               presentational only, no fetching
 lib/
   networks.ts             network identity and hostname arithmetic
