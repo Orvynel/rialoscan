@@ -23,13 +23,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const title =
     network === null
-      ? "RialoScan — Rialo network explorer"
-      : `RialoScan ${network.label} — Rialo block explorer`;
+      ? "RialoScan — Rialo Block Explorer"
+      : `RialoScan — Rialo ${network.label} Block Explorer`;
 
+  // Both fit inside the ~155 characters a search result shows, so neither is cut
+  // off mid-clause. Each says where the numbers come from, because that is the
+  // question a snippet has to answer for an explorer nobody has heard of yet.
   const description =
     network === null
-      ? `Independent explorer for the Rialo network. Each network has its own explorer: devnet.${SITE_DOMAIN} and testnet.${SITE_DOMAIN}.`
-      : `Blocks, transactions, accounts, validators and reactive-execution workflows on Rialo ${network.label}. ${network.note}`;
+      ? `Block explorer for the Rialo network, read live from the node RPC. Each network has its own: devnet.${SITE_DOMAIN} and testnet.${SITE_DOMAIN}.`
+      : `Search blocks, transactions, accounts, validators and REX workflows on Rialo ${network.label}. ${network.note}`;
 
   return {
     // Absolute base for OpenGraph and canonical URLs. Without this, Next.js emits
@@ -69,7 +72,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="footer">
           <div className="shell footer-inner">
             <span>
-              RialoScan · independent explorer · not affiliated with Subzero Labs
+              RialoScan · built on the Rialo JSON-RPC · not affiliated with Subzero Labs
             </span>
             <span className="footer-links">
               <a href="/api/rpc">CORS-safe RPC proxy</a>

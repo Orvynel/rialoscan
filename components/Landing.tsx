@@ -25,7 +25,7 @@ export async function Landing({ host, protocol }: { host: string; protocol: stri
         <div>
           <div className="eyebrow">Rialo</div>
           <h1 className="page-title">RialoScan</h1>
-          <p className="page-sub">An independent block explorer for the Rialo network.</p>
+          <p className="page-sub">Block explorer for the Rialo network.</p>
         </div>
       </div>
 

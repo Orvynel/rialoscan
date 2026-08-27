@@ -143,6 +143,7 @@ app/
   blocks/ block/[height]/ txs/ tx/[signature]/ address/[address]/
   validators/ rex/ not-found.tsx
   globals.css             all styling; no CSS framework
+  icon.svg favicon.ico    the mark, sized for a browser tab and a search result
 components/               presentational only, no fetching
 lib/
   networks.ts             network identity and hostname arithmetic
@@ -157,6 +158,7 @@ lib/
   format.ts               locale-free formatting (kelvin/RLO, UTC, byte sizes)
   theme.ts                the pre-paint theme script and the cookie it reads
   overview.ts
+scripts/make-icons.py       redraws the raster icons from icon.svg's geometry
 ```
 
 `lib/chain.ts` is `server-only`. The Rialo RPC sends no
